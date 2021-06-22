@@ -101,3 +101,27 @@ SELECT * FROM facturas F
 INNER JOIN
 items I
 ON F.NUMERO = I.NUMERO;
+
+
+--PROYECTO DEL AULA ANTERIOR 2
+
+
+-- MIN = 20 Y MAX= 250
+-- (RAND() * (MAX-MIN+1))+MIN
+
+SELECT (RAND() * (250-20+1))+20 AS ALEATORIO;
+
+SELECT FLOOR((RAND() * (250-20+1))+20) AS ALEATORIO;
+
+SET GLOBAL log_bin_trust_function_creators = 1;
+
+SELECT f_aleatorio(1,10) AS RESULTADO;
+
+DELIMITER $$
+CREATE FUNCTION `f_aleatorio`(min INT, max INT) RETURNS int
+BEGIN
+DECLARE vresultado INT;
+SELECT FLOOR((RAND() * (max-min+1))+min) INTO vresultado;
+RETURN vresultado;
+END$$
+DELIMITER ;
