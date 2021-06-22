@@ -267,3 +267,126 @@ SET vcontador = vcontador+1;
 END WHILE;
 END $$
 
+
+-- PROYECTO FINAL
+
+
+DELIMITER $$
+CREATE PROCEDURE `sp_venta`(fecha DATE, maxitems INT, maxcantidad INT)
+BEGIN
+DECLARE vcliente VARCHAR(11);
+DECLARE vproducto VARCHAR(10);
+DECLARE vvendedor VARCHAR(5);
+DECLARE vcantidad INT;
+DECLARE vprecio FLOAT;
+DECLARE vitens INT;
+DECLARE vnfactura INT;
+DECLARE vcontador INT DEFAULT 1;
+DECLARE vnumitems INT;
+SELECT MAX(NUMERO) + 1 INTO vnfactura FROM facturas;
+SET vcliente = f_cliente_aleatorio();
+SET vvendedor = f_vendedor_aleatorio();
+INSERT INTO facturas (NUMERO, FECHA, DNI, MATRICULA, IMPUESTO) VALUES (vnfactura, fecha, vcliente, vvendedor, 0.16);
+SET vitens = f_aleatorio(1,  maxitems);
+WHILE vcontador <= vitens
+DO
+SET vproducto = f_producto_aleatorio();
+SELECT COUNT(*) INTO vnumitems FROM items
+WHERE CODIGO = vproducto AND NUMERO = vnfactura;
+IF vnumitems = 0 THEN
+  SET vcantidad = f_aleatorio(1, maxcantidad);
+  SELECT PRECIO INTO vprecio FROM productos WHERE CODIGO = vproducto;
+  INSERT INTO items(NUMERO, CODIGO, CANTIDAD, PRECIO) VALUES(vnfactura, vproducto, vcantidad, vprecio);
+END IF;
+SET vcontador = vcontador+1;
+END WHILE;
+END $$
+
+CREATE TABLE facturacion(
+FECHA DATE NULL,
+VENTA_TOTAL FLOAT
+);
+
+DELIMITER //
+CREATE TRIGGER TG_FACTURACION_INSERT 
+AFTER INSERT ON items
+FOR EACH ROW BEGIN
+  DELETE FROM facturacion;
+  INSERT INTO facturacion
+  SELECT A.FECHA, SUM(B.CANTIDAD * B.PRECIO) AS VENTA_TOTAL
+  FROM facturas A
+  INNER JOIN
+  items B
+  ON A.NUMERO = B.NUMERO
+  GROUP BY A.FECHA;
+END //
+
+DELIMITER //
+CREATE TRIGGER TG_FACTURACION_DELETE
+AFTER DELETE ON items
+FOR EACH ROW BEGIN
+  DELETE FROM facturacion;
+  INSERT INTO facturacion
+  SELECT A.FECHA, SUM(B.CANTIDAD * B.PRECIO) AS VENTA_TOTAL
+  FROM facturas A
+  INNER JOIN
+  items B
+  ON A.NUMERO = B.NUMERO
+  GROUP BY A.FECHA;
+END //
+
+DELIMITER //
+CREATE TRIGGER TG_FACTURACION_UPDATE
+AFTER UPDATE ON items
+FOR EACH ROW BEGIN
+  DELETE FROM facturacion;
+  INSERT INTO facturacion
+  SELECT A.FECHA, SUM(B.CANTIDAD * B.PRECIO) AS VENTA_TOTAL
+  FROM facturas A
+  INNER JOIN
+  items B
+  ON A.NUMERO = B.NUMERO
+  GROUP BY A.FECHA;
+END //
+
+SELECT * FROM facturacion WHERE FECHA = '20210622';
+
+CALL sp_venta('20210622', 15, 100);
+
+DROP TRIGGER TG_FACTURACION_DELETE;
+DROP TRIGGER TG_FACTURACION_UPDATE;
+DROP TRIGGER TG_FACTURACION_INSERT;
+
+DELIMITER //
+CREATE TRIGGER TG_FACTURACION_INSERT 
+AFTER INSERT ON items
+FOR EACH ROW BEGIN
+  CALL sp_triggers;
+END //
+
+DELIMITER //
+CREATE TRIGGER TG_FACTURACION_DELETE
+AFTER DELETE ON items
+FOR EACH ROW BEGIN
+  CALL sp_triggers;
+END //
+
+DELIMITER //
+CREATE TRIGGER TG_FACTURACION_UPDATE
+AFTER UPDATE ON items
+FOR EACH ROW BEGIN
+  CALL sp_triggers;
+END //
+
+DELIMITER $$
+CREATE PROCEDURE `sp_triggers`()
+BEGIN
+  DELETE FROM facturacion;
+  INSERT INTO facturacion
+  SELECT A.FECHA, SUM(B.CANTIDAD * B.PRECIO) AS VENTA_TOTAL
+  FROM facturas A
+  INNER JOIN
+  items B
+  ON A.NUMERO = B.NUMERO
+  GROUP BY A.FECHA;
+END $$
